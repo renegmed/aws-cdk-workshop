@@ -1,19 +1,35 @@
-import { Duration, Stack, StackProps } from 'aws-cdk-lib';
-import * as sns from 'aws-cdk-lib/aws-sns';
-import * as subs from 'aws-cdk-lib/aws-sns-subscriptions';
-import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as cdk from 'aws-cdk-lib';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as apigw from 'aws-cdk-lib/aws-apigateway';
+import { HitCounter } from './hitcounter';
+
 import { Construct } from 'constructs';
 
-export class CdkWorkshopTsStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
+export class CdkWorkshopTsStack extends cdk.Stack {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const queue = new sqs.Queue(this, 'CdkWorkshopTsQueue', {
-      visibilityTimeout: Duration.seconds(300)
+    const hello = new lambda.Function(this, 'HelloHandler', {
+      runtime: lambda.Runtime.NODEJS_14_X,
+      code: lambda.Code.fromAsset('lambda'),
+      handler: 'hello.handler'
     });
 
-    const topic = new sns.Topic(this, 'CdkWorkshopTsTopic');
+    // NOTE: helloWithCounter acts as middleware for hello.handler lambda 
+    // Whenever endpoint is hit, API Gateway will route the request to 
+    // this handler, which will log the hit and relay it over to the 
+    // 'hello' function
+    const helloWithCounter = new HitCounter(this, 'HelloHitCounter', {
+      downstream: hello  // prop - lambda/hello.handler
+    });
 
-    topic.addSubscription(new subs.SqsSubscription(queue));
+    // defines an API Gateway REST API resource backed by our "hello" function 
+    new apigw.LambdaRestApi(this, 'Endpoint', {
+      handler: helloWithCounter.handler
+    });
+
+
+
+ 
   }
 }
