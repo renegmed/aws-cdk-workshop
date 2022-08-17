@@ -21,7 +21,8 @@ export class HitCounter extends Construct {
        const table = new dynamodb.Table(this, 'Hits', {
         partitionKey: { 
             name: 'path', 
-            type: dynamodb.AttributeType.STRING }
+            type: dynamodb.AttributeType.STRING },
+        removalPolicy: cdk.RemovalPolicy.DESTROY,  // dynamodb table will be destroy upon stack deletion
        });
 
        this.table = table;  // this.table is now accessible to outsider 
